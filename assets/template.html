@@ -1,0 +1,362 @@
+<title>{{TITLE}}</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@500;600&display=swap">
+<style>
+/* Layout: flow index on the left, code in the middle, a sticky explanation column on the right; each note lights up the lines it explains. */
+:root {
+  --bg: #f4f6f8; --surface: #ffffff; --sunk: #eef1f4; --fg: #18202b; --muted: #5b6676; --line: #d9dfe6;
+  --accent: #155e75; --add: #eaf6ee; --addn: #d6ecdf; --ctx: #ffffff; --ctxn: #f4f6f8; --code: #1f2a37; --dim: #6b7787;
+  --lit: #fbefc4; --litn: #f3df98; --del: #fbecec; --deln: #f5dada; --addsign: #1f7a4a; --delsign: #b42318;
+  --hl-kw: #7a2e8e; --hl-str: #8a4b00; --hl-num: #0b6e8a; --hl-com: #6b7787; --hl-fn: #2451a6; --hl-type: #0f6e5f;
+  --sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --serif: "IBM Plex Serif", Georgia, serif;
+  --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #11161d; --surface: #182029; --sunk: #1d2631; --fg: #e3e8ee; --muted: #9aa6b4; --line: #2b3643;
+  --accent: #6cc3d9; --add: #15261d; --addn: #1b3226; --ctx: #182029; --ctxn: #1d2631; --code: #dde4ec; --dim: #8592a1;
+  --lit: #37301a; --litn: #4a3f1c; --del: #2c1a1c; --deln: #3a2124; --addsign: #6fcf97; --delsign: #f28b82;
+  --hl-kw: #d49bea; --hl-str: #e8b874; --hl-num: #7fd3e8; --hl-com: #8592a1; --hl-fn: #8fb5f5; --hl-type: #6fd1bf;
+  color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #11161d; --surface: #182029; --sunk: #1d2631; --fg: #e3e8ee; --muted: #9aa6b4; --line: #2b3643;
+  --accent: #6cc3d9; --add: #15261d; --addn: #1b3226; --ctx: #182029; --ctxn: #1d2631; --code: #dde4ec; --dim: #8592a1;
+  --lit: #37301a; --litn: #4a3f1c; --del: #2c1a1c; --deln: #3a2124; --addsign: #6fcf97; --delsign: #f28b82;
+  --hl-kw: #d49bea; --hl-str: #e8b874; --hl-num: #7fd3e8; --hl-com: #8592a1; --hl-fn: #8fb5f5; --hl-type: #6fd1bf;
+  color-scheme: dark }
+
+body { --stick: 1rem; background: var(--bg); color: var(--fg); font: 15px/1.55 var(--sans); margin: 0; }
+.wrap { max-width: 100rem; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 1.5rem 4rem; }
+code { font-family: var(--mono); font-size: .88em; background: var(--sunk); padding: .05em .3em; border-radius: 3px; }
+a { color: var(--accent); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.pr { display: grid; gap: .6rem; padding-bottom: 1.25rem; border-bottom: 1px solid var(--line); }
+.eyebrow { font-size: .74rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 600; margin: 0; }
+h1 { font: 600 1.85rem/1.2 var(--serif); margin: 0; text-wrap: balance; }
+.repos { display: flex; flex-wrap: wrap; gap: .5rem 1.5rem; font-size: .9rem; color: var(--muted); }
+.repos b { font-weight: 600; }
+
+.overview { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 1.25rem; margin-block: 1.5rem 2.25rem; }
+.overview.single { grid-template-columns: minmax(0, 1fr); }
+@media (max-width: 900px) { .overview { grid-template-columns: minmax(0, 1fr); } }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 1.1rem 1.25rem; display: grid; gap: .6rem; align-content: start; min-width: 0; }
+.panel h2 { margin: 0; font: 600 1.1rem/1.3 var(--serif); }
+.panel p { margin: 0; max-width: 66ch; }
+.panel .hint { color: var(--muted); font-size: .9rem; }
+.glossary { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: .35rem .8rem; margin: 0; font-size: .9rem; }
+.glossary dt { font-family: var(--mono); font-size: .8rem; padding-top: .1rem; color: var(--accent); }
+.glossary dd { margin: 0; color: var(--muted); }
+
+.layout { display: grid; grid-template-columns: 13rem minmax(0, 1fr); gap: 2rem; align-items: start; }
+@media (max-width: 960px) { .layout { grid-template-columns: minmax(0, 1fr); } .side { position: static !important; } }
+.side { position: sticky; top: calc(env(safe-area-inset-top, 0px) + var(--stick)); }
+.side ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 1px; }
+.side li a { display: grid; grid-template-columns: 1.6rem 1fr; gap: .25rem; padding: .3rem .4rem; border-radius: 5px; color: var(--fg); text-decoration: none; font-size: .88rem; line-height: 1.3; }
+.side li a:hover { background: var(--sunk); }
+.side li a span { color: var(--muted); font-family: var(--mono); font-size: .8rem; padding-top: .1rem; }
+.side .phase { margin-top: .6rem; font-size: .7rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); padding-left: .4rem; }
+.side .phase:first-child { margin-top: 0; }
+
+.step { display: grid; grid-template-columns: minmax(0, 1fr) 23rem; gap: 1rem 1.5rem; padding-bottom: 2.75rem; scroll-margin-top: var(--stick); }
+@media (max-width: 1320px) { .step { grid-template-columns: minmax(0, 1fr); } .explain { position: static !important; max-height: none !important; order: -1; } }
+.step > header { grid-column: 1 / -1; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: .1rem .8rem; align-items: baseline; }
+.step .no { font: 500 1.05rem var(--mono); color: var(--accent); }
+.step h2 { margin: 0; font: 600 1.3rem/1.25 var(--serif); text-wrap: balance; }
+.step .why { grid-column: 2; margin: 0; color: var(--muted); max-width: 70ch; }
+.code { display: grid; gap: .9rem; min-width: 0; align-content: start; }
+
+.explain { position: sticky; top: calc(env(safe-area-inset-top, 0px) + var(--stick)); align-self: start; max-height: calc(100vh - var(--stick) - 1rem); overflow-y: auto; display: grid; gap: .5rem; min-width: 0; }
+.note { display: grid; grid-template-columns: 4.6rem minmax(0, 1fr); gap: .6rem; padding: .5rem .65rem; border-radius: 6px; border: 1px solid var(--line); background: var(--surface); cursor: pointer; font-size: .9rem; line-height: 1.5; }
+.note:hover, .note:focus-visible, .note.on { border-color: var(--accent); background: var(--sunk); }
+.note .at { font: 500 .74rem/1.5 var(--mono); color: var(--accent); padding-top: .08rem; overflow-wrap: anywhere; }
+.note .at small { display: block; color: var(--muted); font-size: .68rem; }
+.note p { margin: 0; }
+
+.file { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; min-width: 0; }
+.fhead { display: flex; flex-wrap: wrap; gap: .4rem .7rem; align-items: center; padding: .5rem .8rem; background: var(--sunk); border-bottom: 1px solid var(--line); font-size: .85rem; }
+.fhead .repo { font-size: .72rem; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--accent); }
+.fhead .path { font-family: var(--mono); font-size: .82rem; overflow-wrap: anywhere; }
+.fhead .range { margin-left: auto; color: var(--muted); font-family: var(--mono); font-size: .78rem; display: flex; flex-wrap: wrap; gap: .3rem .6rem; }
+.fhead .range a { color: var(--accent); text-decoration: none; border-bottom: 1px solid var(--line); }
+.fhead .range a:hover { border-bottom-color: var(--accent); }
+.hunk + .hunk { border-top: 1px dashed var(--line); }
+.scroll { overflow-x: auto; }
+table.diff { border-collapse: collapse; width: 100%; font: 13px/1.5 var(--mono); }
+.diff td { padding: 0 .6rem; vertical-align: top; }
+.diff .n { width: 1%; text-align: right; color: var(--dim); background: var(--ctxn); user-select: none; font-variant-numeric: tabular-nums; }
+.diff .s { width: 1%; padding: 0 .15rem; color: var(--addsign); user-select: none; background: var(--ctx); }
+.diff .t { white-space: pre; color: var(--code); background: var(--ctx); }
+.diff tr.add .n { background: var(--addn); }
+.diff tr.add .s, .diff tr.add .t { background: var(--add); }
+.diff tr.del .n { background: var(--deln); }
+.diff tr.del .s, .diff tr.del .t { background: var(--del); }
+.diff tr.del .s { color: var(--delsign); }
+.diff tr.has .n { box-shadow: inset 3px 0 0 var(--line); }
+.diff tr.ctx-head .t { opacity: .6; }
+.diff tr.gap td { color: var(--dim); background: var(--ctxn); text-align: center; line-height: 1.2; }
+.diff tr.lit .t, .diff tr.lit .s { background: var(--lit); }
+.diff tr.lit .n { background: var(--litn); box-shadow: inset 3px 0 0 var(--accent); }
+@media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } .diff td { transition: background-color .15s; } }
+
+.hljs-keyword, .hljs-literal, .hljs-tag, .hljs-name, .hljs-meta, .hljs-selector-tag { color: var(--hl-kw); }
+.hljs-string, .hljs-regexp { color: var(--hl-str); }
+.hljs-number { color: var(--hl-num); }
+.hljs-comment, .hljs-quote { color: var(--hl-com); font-style: italic; }
+.hljs-title, .hljs-attr, .hljs-property, .hljs-attribute, .hljs-section { color: var(--hl-fn); }
+.hljs-built_in, .hljs-type, .hljs-title.class_, .hljs-selector-class { color: var(--hl-type); }
+.hljs-subst, .hljs-variable, .hljs-params { color: var(--code); }
+
+.diagram { margin: 0 0 2.25rem; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 1.1rem 1.25rem; display: grid; gap: .6rem; min-width: 0; }
+.code .diagram { margin: 0; }
+.diagram h2 { margin: 0; font: 600 1.1rem/1.3 var(--serif); }
+.diagram pre.mermaid { margin: 0; overflow-x: auto; background: none; font: 13px/1.4 var(--mono); color: var(--muted); text-align: center; }
+.diagram pre.mermaid svg { max-width: 100%; height: auto; }
+.diagram .caption { margin: 0; color: var(--muted); font-size: .88rem; max-width: 70ch; }
+
+/* Commit mode: a sticky timeline of commits; one chapter is shown at a time. */
+body:has(.timeline) { --stick: 5.25rem; }
+.timeline { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: .5rem; align-items: center; margin: 0 0 1.75rem; padding: .55rem .6rem; background: color-mix(in srgb, var(--bg) 92%, transparent); backdrop-filter: blur(6px); border-bottom: 1px solid var(--line); }
+.timeline ol { list-style: none; margin: 0; padding: 0; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(9rem, 1fr); overflow-x: auto; scrollbar-width: thin; }
+.timeline li { position: relative; min-width: 0; }
+.timeline li::before { content: ""; position: absolute; top: 1.05rem; left: 0; right: 0; height: 2px; background: var(--line); }
+.timeline li:first-child::before { left: 50%; }
+.timeline li:last-child::before { right: 50%; }
+.timeline li.done::before, .timeline li.active::before { background: var(--accent); }
+.timeline li.active::before { right: 50%; }
+.timeline li.active:first-child::before { display: none; }
+.timeline a { position: relative; display: grid; justify-items: center; gap: .15rem; padding: .35rem .4rem; color: var(--muted); text-decoration: none; text-align: center; border-radius: 6px; }
+.timeline a:hover { color: var(--fg); }
+.timeline .dot { width: .75rem; height: .75rem; border-radius: 50%; background: var(--surface); border: 2px solid var(--line); }
+.timeline li.done .dot { background: var(--accent); border-color: var(--accent); }
+.timeline li.active .dot { background: var(--surface); border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 30%, transparent); }
+.timeline code { background: none; padding: 0; font-size: .72rem; }
+.timeline .t { font-size: .8rem; line-height: 1.25; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.timeline li.active a { color: var(--fg); font-weight: 500; }
+.timeline button { font: 500 1.3rem/1 var(--sans); width: 2.1rem; height: 2.1rem; border-radius: 50%; border: 1px solid var(--line); background: var(--surface); color: var(--fg); cursor: pointer; }
+.timeline button:disabled { opacity: .35; cursor: default; }
+.timeline button:not(:disabled):hover { border-color: var(--accent); color: var(--accent); }
+.layout.commits main { position: relative; }
+.side ol[hidden] { display: none; }
+.chapter:not(.active) { position: absolute; top: 0; left: 0; width: 100%; height: 0; overflow: hidden; visibility: hidden; }
+.chapter { scroll-margin-top: var(--stick); }
+.chead { display: grid; gap: .35rem; padding-bottom: 1.25rem; margin-bottom: 1.5rem; border-bottom: 1px solid var(--line); }
+.chead h2 { margin: 0; font: 600 1.55rem/1.2 var(--serif); text-wrap: balance; }
+.chead .subject { margin: 0; color: var(--muted); font-size: .9rem; }
+.chead .subject span { white-space: nowrap; }
+.chead .why { margin: 0; max-width: 75ch; }
+.file { scroll-margin-top: var(--stick); }
+.fhead .xlinks { display: flex; flex-wrap: wrap; gap: .3rem .6rem; font-size: .78rem; }
+.fhead .xlinks a { color: var(--accent); text-decoration: none; padding: .05rem .45rem; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); }
+.fhead .xlinks a:hover { border-color: var(--accent); }
+.file.flash { animation: flash 1.2s ease-out; }
+@keyframes flash { from { box-shadow: 0 0 0 3px var(--accent); } to { box-shadow: 0 0 0 3px transparent; } }
+
+.out { background: var(--surface); border: 1px dashed var(--line); border-radius: 8px; padding: 1rem 1.25rem; color: var(--muted); font-size: .92rem; }
+.out ul { margin: .3rem 0 0; padding-left: 1.2rem; }
+</style>
+
+<div class="wrap">
+{{CONTENT}}
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script>
+(() => {
+  const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e }
+  const escape = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  const ranges = text => {
+    const set = new Set()
+    for (const part of (text || '').split(',').filter(Boolean)) {
+      const [a, b = a] = part.split('-').map(Number)
+      for (let n = a; n <= b; n++) set.add(n)
+    }
+    return set
+  }
+
+  // Highlights the whole excerpt, then splits it into lines, closing and
+  // reopening spans (multi-line strings and comments) at each line break.
+  const highlightLines = (code, lang) => {
+    let html
+    try {
+      html = window.hljs && lang && hljs.getLanguage(lang) ? hljs.highlight(code, { language: lang, ignoreIllegals: true }).value : escape(code)
+    } catch { html = escape(code) }
+    const out = [], open = []
+    let line = ''
+    for (const part of html.split(/(<[^>]+>|\n)/)) {
+      if (part === '\n') { out.push(line + '</span>'.repeat(open.length)); line = open.join('') }
+      else if (part.startsWith('</')) { open.pop(); line += part }
+      else if (part.startsWith('<')) { open.push(part); line += part }
+      else line += part
+    }
+    out.push(line + '</span>'.repeat(open.length))
+    return out
+  }
+
+  // Renders each excerpt into a table and keeps its rows by line number.
+  const rowsOf = new Map()
+  document.querySelectorAll('.hunk').forEach(hunk => {
+    const from = Number(hunk.dataset.from)
+    const code = hunk.querySelector('script[type="text/x-code"]').textContent.replace(/^\n/, '').replace(/\n$/, '').replace(/<\\\/script/gi, '</script')
+    const lines = highlightLines(code, hunk.dataset.lang)
+    const added = ranges(hunk.dataset.added)
+    const to = from + lines.length - 1
+    const range = hunk.parentElement.querySelector('.range')
+    if (hunk.dataset.link) {
+      const a = el('a', '', `L${from}–${to} on GitHub ↗`)
+      a.href = hunk.dataset.link; a.target = '_blank'; a.rel = 'noreferrer'
+      range.append(a)
+    } else range.append(el('span', '', `L${from}–${to}`))
+    const rows = {}
+    const tbody = el('tbody')
+    // Removed lines, keyed by the new line they sat before; drawn as their own
+    // rows, with old line numbers, and never targeted by notes.
+    let removed = {}
+    try { removed = JSON.parse(hunk.querySelector('script.removed')?.textContent || '{}') } catch {}
+    const addRemoved = n => {
+      const gone = removed[n]
+      if (!gone || !gone.length) return
+      const html = highlightLines(gone.map(([, text]) => text).join('\n'), hunk.dataset.lang)
+      gone.forEach(([old], i) => {
+        const tr = el('tr', 'del')
+        const t = el('td', 't'); t.innerHTML = html[i] || ' '
+        tr.append(el('td', 'n', String(old)), el('td', 's', '−'), t)
+        tr.title = `Removed (was line ${old})`
+        tbody.append(tr)
+      })
+    }
+    // Lines that open the blocks around the excerpt (the function and so on),
+    // dimmed, with a ⋯ row wherever lines are skipped. Notes never target them.
+    let context = []
+    try { context = JSON.parse(hunk.querySelector('script.context')?.textContent || '[]') } catch {}
+    const gap = () => {
+      const tr = el('tr', 'gap')
+      tr.append(el('td', 'n', '⋯'), el('td', 's', ' '), el('td', 't', ' '))
+      tbody.append(tr)
+    }
+    context.forEach(([n, text], i) => {
+      const prev = i ? context[i - 1][0] : null
+      if (prev !== null && n > prev + 1) gap()
+      const tr = el('tr', 'ctx-head')
+      const t = el('td', 't'); t.innerHTML = highlightLines(text, hunk.dataset.lang)[0] || ' '
+      tr.append(el('td', 'n', String(n)), el('td', 's', ' '), t)
+      tr.title = 'Enclosing block (outside the excerpt)'
+      tbody.append(tr)
+    })
+    if (context.length && context[context.length - 1][0] < from - 1) gap()
+    lines.forEach((line, i) => {
+      const n = from + i
+      addRemoved(n)
+      const tr = el('tr', added.has(n) ? 'add' : '')
+      const t = el('td', 't'); t.innerHTML = line || ' '
+      tr.append(el('td', 'n', String(n)), el('td', 's', added.has(n) ? '+' : ' '), t)
+      tbody.append(tr)
+      rows[n] = tr
+    })
+    addRemoved(to + 1)
+    const table = el('table', 'diff'); table.append(tbody)
+    const scroll = el('div', 'scroll'); scroll.append(table)
+    hunk.replaceChildren(scroll)
+    rowsOf.set(hunk, rows)
+  })
+
+  // Each note lights up its lines on hover or focus, and scrolls to them on click.
+  document.querySelectorAll('.step').forEach(step => {
+    const hunks = [...step.querySelectorAll('.hunk')]
+    const manyFiles = step.querySelectorAll('.file').length > 1
+    step.querySelectorAll('.note').forEach(note => {
+      const hunk = hunks[Number(note.dataset.hunk)]
+      const [a, b] = note.dataset.lines.split('-').map(Number)
+      const rows = Object.entries(rowsOf.get(hunk)).filter(([n]) => n >= a && n <= b).map(([, tr]) => tr)
+      rows.forEach(tr => tr.classList.add('has'))
+      const at = el('div', 'at', a === b ? `L${a}` : `L${a}–${b}`)
+      if (manyFiles) at.append(el('small', '', hunk.closest('.file').querySelector('.path').textContent.split('/').pop()))
+      note.prepend(at)
+      note.tabIndex = 0
+      const light = on => { note.classList.toggle('on', on); rows.forEach(tr => tr.classList.toggle('lit', on)) }
+      note.addEventListener('mouseenter', () => light(true))
+      note.addEventListener('mouseleave', () => light(false))
+      note.addEventListener('focus', () => light(true))
+      note.addEventListener('blur', () => light(false))
+      const go = () => {
+        light(true)
+        const r = rows[0].getBoundingClientRect()
+        if (r.top < 0 || r.bottom > innerHeight) rows[0].scrollIntoView({ block: 'center' })
+      }
+      note.addEventListener('click', go)
+      note.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go() } })
+    })
+  })
+
+  // Commit mode: show one chapter at a time. The URL hash picks it: #c2 for
+  // a chapter, #c2-s3 for a step, #c2-f-… for a file in it.
+  const chapters = [...document.querySelectorAll('.chapter')]
+  if (chapters.length) {
+    const navs = [...document.querySelectorAll('.side ol[data-chapter]')]
+    const marks = [...document.querySelectorAll('.timeline li')]
+    const prev = document.querySelector('.timeline .prev')
+    const next = document.querySelector('.timeline .next')
+    let current = -1
+    const show = i => {
+      if (i === current) return
+      current = i
+      chapters.forEach((c, j) => { c.classList.toggle('active', j === i); c.inert = j !== i })
+      navs.forEach((n, j) => { n.hidden = j !== i })
+      marks.forEach((m, j) => {
+        m.classList.toggle('active', j === i)
+        m.classList.toggle('done', j < i)
+        if (j === i) m.querySelector('a').setAttribute('aria-current', 'step')
+        else m.querySelector('a').removeAttribute('aria-current')
+      })
+      prev.disabled = i === 0
+      next.disabled = i === chapters.length - 1
+      const ol = marks[i].parentElement, li = marks[i]
+      if (li.offsetLeft < ol.scrollLeft || li.offsetLeft + li.offsetWidth > ol.scrollLeft + ol.clientWidth) {
+        ol.scrollTo({ left: li.offsetLeft - (ol.clientWidth - li.offsetWidth) / 2 })
+      }
+    }
+    const fromHash = scroll => {
+      const id = decodeURIComponent(location.hash.slice(1))
+      const m = id.match(/^c(\d+)/)
+      const i = m ? Math.min(Number(m[1]), chapters.length - 1) : 0
+      show(i)
+      if (!m || !scroll) return
+      const target = document.getElementById(id) || chapters[i]
+      target.scrollIntoView({ block: 'start' })
+      if (target.classList.contains('file')) {
+        target.classList.remove('flash'); void target.offsetWidth; target.classList.add('flash')
+      }
+    }
+    const go = i => { if (i >= 0 && i < chapters.length) location.hash = `c${i}` }
+    prev.addEventListener('click', () => go(current - 1))
+    next.addEventListener('click', () => go(current + 1))
+    addEventListener('keydown', e => {
+      if (e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return
+      if (e.target.closest('input, textarea, select, [contenteditable]')) return
+      if (e.key === 'ArrowLeft') { e.preventDefault(); go(current - 1) }
+      if (e.key === 'ArrowRight') { e.preventDefault(); go(current + 1) }
+    })
+    addEventListener('hashchange', () => fromHash(true))
+    fromHash(true)
+  }
+
+  // claude.ai artifacts draw <pre class="mermaid"> themselves. Opened as a
+  // plain file, nothing does, so load Mermaid for any block still unrendered.
+  setTimeout(() => {
+    const pending = [...document.querySelectorAll('pre.mermaid')].filter(p => !p.querySelector('svg') && !p.dataset.processed)
+    if (!pending.length) return
+    const script = document.createElement('script')
+    script.src = 'https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js'
+    script.onload = () => {
+      const dark = document.documentElement.dataset.theme === 'dark' ||
+        (document.documentElement.dataset.theme !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches)
+      mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'neutral', fontFamily: 'IBM Plex Sans, system-ui, sans-serif' })
+      mermaid.run({ nodes: pending })
+    }
+    document.head.append(script)
+  }, 2500)
+})()
+</script>

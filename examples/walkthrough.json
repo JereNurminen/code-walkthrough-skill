@@ -1,0 +1,85 @@
+{
+  "title": "Invoice Export Walkthrough",
+  "heading": "Exporting monthly invoices to accounting",
+  "eyebrow": "Code walkthrough · feature/invoice-export",
+  "repos": [
+    {
+      "name": "shop",
+      "path": "../shop",
+      "base": "origin/main",
+      "pr": "https://github.com/example/shop/pull/42"
+    }
+  ],
+  "overview": {
+    "heading": "How an export runs",
+    "paragraphs": [
+      "An admin picks a month and starts a DRY or REAL export. The shop loads that month's invoices, stores them as export jobs, and a background loop works through them two at a time.",
+      "A valid invoice is sent to the accounting system, in a REAL export only. Anything else waits for an admin in a manual queue."
+    ]
+  },
+  "glossary": {
+    "heading": "Job statuses",
+    "items": [
+      ["PENDING", "Queued, waiting for the worker."],
+      ["SENT", "Valid. A REAL export has sent it."],
+      ["MANUAL", "Needs an admin. `reason` says why."]
+    ],
+    "footer": "**DRY** runs the same steps but never sends anything."
+  },
+  "diagram": {
+    "heading": "The flow",
+    "mermaid": "flowchart LR\n  A[\"Admin: Start export\"] --> B[\"1 · POST /exports\"]\n  B --> Q[(\"jobs: PENDING\")]\n  Q --> W[\"2 · Worker loop\"]\n  W --> S[\"3 · Saving a job\"]\n  S -->|SENT, REAL export| R[(\"accounting API\")]\n  S -->|MANUAL| M[\"Admin in the job editor\"]\n  M --> R",
+    "caption": "Invoices are sent only in a REAL export: automatically for valid ones, and by an admin for MANUAL ones."
+  },
+  "phases": [
+    {
+      "title": "Starting a month",
+      "steps": [
+        {
+          "title": "POST /exports",
+          "why": "Validates the request, loads the month's invoices, stores them as jobs and starts the loop in the background.",
+          "files": [
+            { "repo": "shop", "path": "server/invoice-export/routes.ts", "hunks": ["40-58"] }
+          ],
+          "notes": [
+            { "hunk": 0, "lines": "42", "text": "The body is `{ mode: 'DRY' | 'REAL', month: 'YYYY-MM' }`." },
+            { "hunk": 0, "lines": "46", "text": "Only one REAL export is allowed per month." },
+            { "hunk": 0, "lines": "48-49", "text": "Builds the job queue from the month's invoices." },
+            { "hunk": 0, "lines": "51-52", "text": "The loop starts without being awaited (step 2), and the response returns only the export id." }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Each job",
+      "steps": [
+        {
+          "title": "Worker loop",
+          "why": "Takes pending jobs in chunks of 20 and processes two at a time.",
+          "files": [
+            { "repo": "shop", "path": "server/invoice-export/worker.ts", "hunks": ["20-55"] }
+          ],
+          "notes": [
+            { "hunk": 0, "lines": "30", "text": "The next 20 PENDING jobs, in id order." },
+            { "hunk": 0, "lines": "40-52", "text": "Two workers share the chunk through `shift()`. Each re-reads the export before every job, so a pause takes effect within one job." }
+          ]
+        },
+        {
+          "title": "Saving a job",
+          "why": "An invoice for a customer with an open dispute goes to manual review. Otherwise the outcome is saved.",
+          "diagram": "stateDiagram-v2\n  [*] --> PENDING\n  PENDING --> SENT\n  PENDING --> SKIPPED\n  PENDING --> MANUAL: invalid, or customer has a dispute\n  PENDING --> FAILED: error\n  FAILED --> PENDING: retry\n  MANUAL --> RESOLVED: admin saves",
+          "files": [
+            { "repo": "shop", "path": "server/invoice-export/worker.ts", "hunks": ["57-80"] },
+            { "repo": "shop", "path": "server/invoice-export/db.ts", "hunks": ["110-134"] }
+          ],
+          "notes": [
+            { "hunk": 0, "lines": "64-72", "text": "A valid invoice whose customer has an open dispute becomes MANUAL with `CUSTOMER_HAS_DISPUTE`." },
+            { "hunk": 0, "lines": "75-77", "text": "Only a REAL export sends invoices." },
+            { "hunk": 1, "lines": "116-119", "text": "A transaction-scoped lock on the customer, so the two workers cannot check the same customer at the same time." }
+          ]
+        }
+      ]
+    }
+  ],
+  "notCovered": ["Test suites and fixtures"]
+}
