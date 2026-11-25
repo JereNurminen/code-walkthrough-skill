@@ -15,7 +15,6 @@ Hovering over a note highlights its lines, and clicking it scrolls to them. When
 
 - Each excerpt links to its lines in the PR.
 - Each line number that GitHub can take a comment on (a changed line or the 3 lines around it) opens the PR diff at that line. Shift-clicking two line numbers opens the range between them.
-- Each note has a "Comment on GitHub" link to the part of its lines that is in the PR diff.
 
 The links work only for code that has been pushed, so push before building. Set `pr` whenever the branch has a PR.
 

@@ -105,9 +105,6 @@ table.diff { border-collapse: collapse; width: 100%; font: 13px/1.5 var(--mono);
 .diff tr:hover .n a, .diff .n a:focus-visible { color: var(--surface); background: var(--accent); }
 .diff tr:hover .n a::before { content: "+ "; }
 .diff .n a.anchor { color: var(--surface); background: var(--accent); }
-.note .gh { grid-column: 2; justify-self: start; font-size: .78rem; color: var(--accent); text-decoration: none; border-bottom: 1px solid var(--line); }
-.note .gh:hover { border-bottom-color: var(--accent); }
-.note .gh.off { color: var(--muted); border-bottom: 0; cursor: help; }
 @media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } .diff td { transition: background-color .15s; } }
 
 .hljs-keyword, .hljs-literal, .hljs-tag, .hljs-name, .hljs-meta, .hljs-selector-tag { color: var(--hl-kw); }
@@ -332,22 +329,6 @@ body:has(.timeline) { --stick: 5.25rem; }
       const at = el('div', 'at', a === b ? `L${a}` : `L${a}–${b}`)
       if (manyFiles) at.append(el('small', '', hunk.closest('.file').querySelector('.path').textContent.split('/').pop()))
       note.prepend(at)
-      if (hunk.dataset.gh) {
-        // The note's lines that GitHub can take a comment on
-        const ok = [...ranges(hunk.dataset.commentable)].filter(n => n >= a && n <= b)
-        if (ok.length) {
-          const lo = Math.min(...ok), hi = Math.max(...ok)
-          const link = el('a', 'gh', 'Comment on GitHub ↗')
-          link.href = `${hunk.dataset.gh}R${lo}-R${hi}`; link.target = '_blank'; link.rel = 'noreferrer'
-          link.title = lo === hi ? `Line ${lo} in the PR diff` : `Lines ${lo}–${hi} in the PR diff`
-          link.addEventListener('click', e => e.stopPropagation())
-          note.append(link)
-        } else {
-          const off = el('span', 'gh off', 'Not in the PR diff')
-          off.title = 'GitHub takes comments only on changed lines and the 3 lines around them'
-          note.append(off)
-        }
-      }
       note.tabIndex = 0
       const light = on => { note.classList.toggle('on', on); rows.forEach(tr => tr.classList.toggle('lit', on)) }
       note.addEventListener('mouseenter', () => light(true))
