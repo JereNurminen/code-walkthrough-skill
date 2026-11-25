@@ -7,7 +7,7 @@ A Claude Code skill that turns a branch or PR into a single HTML page: the real 
 - [Claude Code](https://claude.com/claude-code)
 - Python 3 (standard library only)
 - `git`
-- `gh` (optional, used to link excerpts to the GitHub PR)
+- `gh` (optional: finds the PR URL for the GitHub links; without it, give the PR URL yourself or go without the links)
 
 ## Install
 

@@ -25,7 +25,7 @@ You write only a JSON spec. `scripts/build.py` copies the code out of the checko
 1. **Find the change.** For each affected repo, note:
    - the local path;
    - the base (default `origin/master`; run `git fetch` first);
-   - the PR URL, from `gh pr view <branch> --json url -q .url` (leave it empty if there is no PR).
+   - the PR URL, from `gh pr view <branch> --json url -q .url`. If `gh` is not installed or not logged in, use a PR URL the reader gave, or leave it empty. Without a PR the page works the same, only without the GitHub links.
 
    List the changed files with `git diff --stat <base>...HEAD` and the commits with `git log --reverse --oneline <base>..HEAD`.
 2. **Ask which mode.** Before reading any further, ask with AskUserQuestion, naming the branch and its commit count in the question:
