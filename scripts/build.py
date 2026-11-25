@@ -105,6 +105,28 @@ def diff_lines(repo, merge_base, path, commit=None):
     return parse_diff(diff)
 
 
+def diff_view_lines(repo, merge_base, path, commit=None):
+    """The new-file lines GitHub shows in the PR diff, where it takes line
+    comments: the changed lines with 3 lines of context. None means every
+    line (a new file)."""
+    if commit:
+        parent = git_try(repo, 'rev-parse', '--verify', '-q', f'{commit}^')
+        if parent is None or git_try(repo, 'cat-file', '-e', f'{parent.strip()}:{path}') is None:
+            return None
+        diff = git(repo, 'diff', '-U3', '--no-color', parent.strip(), commit, '--', path)
+    elif merge_base is None:
+        return set()
+    else:
+        diff = git(repo, 'diff', '-U3', '--no-color', merge_base, '--', path)
+        if not diff and path not in git(repo, 'ls-files', '--', path):
+            return None
+    shown = set()
+    for match in re.finditer(r'^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@', diff, re.M):
+        start, count = int(match[1]), int(match[2] or 1)
+        shown.update(range(start, start + count))
+    return shown
+
+
 def read_lines(repo, path, commit=None):
     """The file's lines at `commit`, or in the working tree; None if missing."""
     if commit:
@@ -204,6 +226,7 @@ def render_step(step, number, sid, where, repos, commit=None, xlinks=None):
         if lines is None:
             fail(f'{where}: {f["path"]} not found in {repo["name"]}' + (f' at {sha[:9]}' if sha else ''))
         changed, removed = diff_lines(repo['path'], repo['merge_base'], f['path'], sha)
+        viewable = diff_view_lines(repo['path'], repo['merge_base'], f['path'], sha) if repo.get('pr') else set()
         ext = f['path'].rsplit('.', 1)[-1].lower()
         anchor = hashlib.sha256(f['path'].encode()).hexdigest()
         hunk_html, shown = [], set()
@@ -217,11 +240,12 @@ def render_step(step, number, sid, where, repos, commit=None, xlinks=None):
                 code = code.replace('</script', '<\\/script').replace('</SCRIPT', '<\\/SCRIPT')
             in_range = set(range(start, end + 1))
             marked = in_range if changed is None else in_range & changed
-            link = ''
+            link = gh = ''
             if repo.get('pr'):
                 pr = repo['pr'].rstrip('/')
-                link = (f'{pr}/commits/{sha}#diff-{anchor}R{start}-R{end}' if sha
-                        else f'{pr}/files#diff-{anchor}R{start}-R{end}')
+                gh = f'{pr}/commits/{sha}#diff-{anchor}' if sha else f'{pr}/files#diff-{anchor}'
+                link = f'{gh}R{start}-R{end}'
+            commentable = in_range if viewable is None else in_range & viewable
             # Deleted lines that sat inside the excerpt or right at its edges
             gone = {n: rows for n, rows in removed.items() if start <= n <= end + 1}
             gone_json = json.dumps({str(n): rows for n, rows in gone.items()}, ensure_ascii=False)
@@ -235,7 +259,8 @@ def render_step(step, number, sid, where, repos, commit=None, xlinks=None):
             hunks.append((start, end))
             hunk_html.append(
                 f'<div class="hunk" data-from="{start}" data-lang="{LANGUAGES.get(ext, "")}" '
-                f'data-added="{compact(marked)}" data-link="{esc(link)}">'
+                f'data-added="{compact(marked)}" data-link="{esc(link)}" data-gh="{esc(gh)}" '
+                f'data-commentable="{compact(commentable) if gh else ""}">'
                 f'<script type="text/x-code">\n{code}\n</script>'
                 f'<script type="application/json" class="removed">{gone_json}</script>'
                 f'<script type="application/json" class="context">{context_json}</script></div>')
@@ -268,6 +293,58 @@ def render_step(step, number, sid, where, repos, commit=None, xlinks=None):
     section = (f'<section class="step" id="{sid}"><header><span class="no">{number:02d}</span>'
                f'<h2>{inline(step["title"])}</h2>{why}</header>'
                f'<div class="code">{"".join(files_html)}</div><aside class="explain">{"".join(notes)}</aside></section>')
+    return nav, section
+
+
+STATUS = {'A': 'added', 'M': 'changed', 'D': 'removed', 'R': 'renamed', 'C': 'added', 'T': 'changed'}
+
+
+def file_change(repo, path, to):
+    """(status, +lines, -lines) of a file since the merge base: in the working
+    tree, or at `to`. Status is added/changed/removed/renamed/unchanged."""
+    base = repo['merge_base']
+    if base is None:
+        return 'unchanged', 0, 0
+    args = [base, to] if to else [base]
+    status = (git(repo['path'], 'diff', '--name-status', '-M', *args, '--', path).split() or ['='])[0][:1]
+    numstat = git(repo['path'], 'diff', '--numstat', *args, '--', path).split()
+    plus, minus = (int(numstat[0]), int(numstat[1])) if numstat and numstat[0].isdigit() else (0, 0)
+    if status == '=' and not to and (repo['path'] / path).is_file() and path not in git(repo['path'], 'ls-files', '--', path):
+        status = 'A'  # untracked new file
+        plus = len(read_lines(repo['path'], path) or [])
+    return STATUS.get(status, 'unchanged'), plus, minus
+
+
+def render_testing(spec, repos, commit_mode):
+    """The testing approach: (nav html, section html)."""
+    t = spec['testing']
+    heading = t.get('heading', 'Testing approach')
+    paragraphs = ''.join(f'<p>{inline(p)}</p>' for p in t.get('paragraphs', []))
+    rows = []
+    for i, f in enumerate(t.get('files', [])):
+        where = f'testing, file {i + 1}'
+        repo = repos.get(f.get('repo')) or fail(f'{where}: unknown repo "{f.get("repo")}"')
+        status, plus, minus = file_change(repo, f['path'], 'HEAD' if commit_mode else None)
+        if status == 'unchanged' and read_lines(repo['path'], f['path']) is None:
+            fail(f'{where}: {f["path"]} not found in {repo["name"]} and not removed by the change')
+        stat = ''.join([f'<span class="plus">+{plus}</span>' if plus else '',
+                        f'<span class="minus">−{minus}</span>' if minus else ''])
+        cases = ''
+        if f.get('cases'):
+            cases = '<ul>' + ''.join(f'<li>{inline(c)}</li>' for c in f['cases']) + '</ul>'
+        summary = f'<p>{inline(f["summary"])}</p>' if f.get('summary') else ''
+        rows.append(f'<li class="tfile"><div class="fhead"><span class="badge {status}">{status}</span>'
+                    f'<span class="repo">{esc(repo["name"])}</span><span class="path">{esc(f["path"])}</span>'
+                    f'<span class="tstat">{stat}</span></div>{summary}{cases}</li>')
+    files = f'<ul class="tfiles">{"".join(rows)}</ul>' if rows else ''
+    lists = ''
+    for key, title in (('commands', 'Run'), ('manual', 'Checked by hand'), ('gaps', 'Not tested')):
+        if t.get(key):
+            items = ''.join(f'<li>{inline(x) if key != "commands" else f"<code>{esc(x)}</code>"}</li>' for x in t[key])
+            lists += f'<div class="tlist {key}"><h3>{title}</h3><ul>{items}</ul></div>'
+    nav = f'<ol class="extra"><li class="phase">Tests</li><li><a href="#testing"><span>✓</span>{inline(heading)}</a></li></ol>'
+    section = (f'<section class="testing" id="testing"><header><h2>{inline(heading)}</h2>{paragraphs}</header>'
+               f'{files}{lists}</section>')
     return nav, section
 
 
@@ -411,6 +488,11 @@ def main():
     else:
         timeline = ''
         nav, main_html, number = render_phases(spec, repos)
+
+    if spec.get('testing'):
+        testing_nav, testing = render_testing(spec, repos, commit_mode)
+        nav += testing_nav
+        main_html += testing
 
     not_covered = ''
     if spec.get('notCovered'):

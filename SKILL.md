@@ -11,7 +11,13 @@ The skill builds a single HTML page that walks a reader through a change in the 
 - the real code in the middle, with lines added by the branch marked green and lines it removed shown in red with their old line numbers;
 - a sticky column of short notes on the right.
 
-Hovering over a note highlights its lines, and clicking it scrolls to them. Each code excerpt links to its lines in the GitHub PR.
+Hovering over a note highlights its lines, and clicking it scrolls to them. When a repo has a `pr`, the page links into the PR for commenting:
+
+- Each excerpt links to its lines in the PR.
+- Each line number that GitHub can take a comment on (a changed line or the 3 lines around it) opens the PR diff at that line. Shift-clicking two line numbers opens the range between them.
+- Each note has a "Comment on GitHub" link to the part of its lines that is in the PR diff.
+
+The links work only for code that has been pushed, so push before building. Set `pr` whenever the branch has a PR.
 
 You write only a JSON spec. `scripts/build.py` copies the code out of the checkouts, so the code shown always matches the branch.
 
@@ -32,16 +38,17 @@ You write only a JSON spec. `scripts/build.py` copies the code out of the checko
 4. **Plan the steps in runtime order.** Follow one request or job from start to finish: entry → validation → main work → persistence → UI. Aim for 8–15 steps. Group them into 2–4 phases, such as "Setup", "Starting a run" and "Each case".
 5. **Pick the code for each step.** Use 1–4 excerpts per step, each up to about 40 lines, given as line ranges in the current file. Prefer whole functions. Put the step's most important file first.
 6. **Write the notes.** Each note covers 1–3 sentences and one line range inside one excerpt.
-7. **Draw the flow.** Add a top-level Mermaid `diagram`, plus step diagrams where they help (see Diagrams).
-8. **Write the spec** to `<scratchpad>/walkthrough.json` (format below).
-9. **Build:**
+7. **Describe the testing approach.** Fill `testing` (see Testing approach).
+8. **Draw the flow.** Add a top-level Mermaid `diagram`, plus step diagrams where they help (see Diagrams).
+9. **Write the spec** to `<scratchpad>/walkthrough.json` (format below).
+10. **Build:**
 
    ```
    python3 -I ~/.claude/skills/code-walkthrough/scripts/build.py <scratchpad>/walkthrough.json <scratchpad>/walkthrough.html
    ```
 
    The script stops with a message if an excerpt or note points at a line that doesn't exist. Fix the spec and build again.
-10. **Publish.** If the Artifact tool is available, publish the HTML with icon `code`; the build script prints the page title. Otherwise give the file path and tell the reader to open it in a browser.
+11. **Publish.** If the Artifact tool is available, publish the HTML with icon `code`; the build script prints the page title. Otherwise give the file path and tell the reader to open it in a browser.
 
 To update the page after the code changes, check the line ranges in the spec, then build and publish again with the same file path.
 
@@ -70,6 +77,21 @@ How to write it:
 - **Don't invent anything.** Check every claim against the code you read.
 - **Keep secrets and personal data out of the page,** even if the code or fixtures contain them.
 - **Formatting in text fields:** `` `code` ``, `**bold**` and `[label](https://url)` work. Everything else is escaped.
+
+## Testing approach
+
+The `testing` section comes after the steps. It gives an overview of how the change is tested. Add it to every walkthrough, even when the change has no tests, because then the reader needs to know that too.
+
+1. **Find the test files.** List the test files the branch adds, changes or removes: `git diff --name-status <base>...HEAD`, filtered to test paths. Also search for existing tests that cover the changed code without being touched; list them too (the build marks them "unchanged").
+2. **Read each test diff** (`git diff <base>...HEAD -- <test file>`). For each file, write:
+   - `summary`: what the file tests, in one sentence;
+   - `cases`: the test cases that were added, changed or removed, in a few words each. Say which: "Added: an empty list is current". Group many similar cases into one line.
+3. **Write `paragraphs`:** 1–3 short paragraphs on the strategy. Cover which levels the change is tested at (unit, integration, end-to-end, manual) and which logic sits where. Mention any reason, visible in the code, for testing something at one level and not another.
+4. **`commands`:** the commands that run the relevant tests, scoped to the changed files where the test runner allows that. Take them from `package.json`, a Makefile or the README; don't make them up.
+5. **`manual`** (optional): checks done by hand, only if the conversation or the PR says they were done.
+6. **`gaps`** (optional): changed behaviour that no test exercises. State the fact without judging it: "No test renders the checkbox."
+
+The build shows each file's status (added, changed, removed, renamed or unchanged) and its line counts from git, so don't write those yourself. In commit mode it covers the whole branch, and it appears below every chapter.
 
 ## Diagrams
 
@@ -121,7 +143,18 @@ Choose the diagram type by what it shows:
         ] }
     ] }
   ],
-  "notCovered": ["Fixture PDFs", "Test suites"]
+  "testing": {
+    "heading": "Testing approach",
+    "paragraphs": ["The export query is unit tested against a seeded database; the UI only by hand."],
+    "files": [
+      { "repo": "shop", "path": "test/export.spec.ts", "summary": "Unit tests for the export query.",
+        "cases": ["Added: skips cancelled invoices", "Changed: totals are in cents"] }
+    ],
+    "commands": ["npm run test:unit -- test/export.spec.ts"],
+    "manual": ["Exported a month with no invoices"],
+    "gaps": ["No test covers the retry after a timeout"]
+  },
+  "notCovered": ["Fixture PDFs"]
 }
 ```
 
@@ -130,7 +163,8 @@ Choose the diagram type by what it shows:
 - In `files`, `path` is relative to the repo root. Lines are numbered as in the current working-tree file. Removed lines inside or at the edges of an excerpt appear automatically; notes can't point at them, so describe a removal in a note on the neighbouring new lines.
 - Above each excerpt that starts inside a block, the build adds the lines that open the enclosing blocks (the function signature, `try {`, …), dimmed, with their line numbers and a `⋯` row where lines are skipped. It finds them by indentation and keeps at most three: the outermost and the two nearest. A line already shown by an earlier excerpt of the same file entry is not repeated. Notes can't point at them. Set `"context": false` on a file entry to turn this off.
 - `hunk` in a note is the excerpt's index within the step, counting across all of the step's files in order, starting at 0.
-- `glossary`, `diagram` and `notCovered` are optional. A step can also have `diagram`, either as an object like the top-level one or as a plain Mermaid string. It is drawn above the step's code.
+- In `testing`, everything is optional except each file's `repo` and `path`. A file must exist in the working tree, or be removed by the change.
+- `glossary`, `diagram`, `testing` and `notCovered` are optional. A step can also have `diagram`, either as an object like the top-level one or as a plain Mermaid string. It is drawn above the step's code.
 
 `examples/walkthrough.json` is a small working spec.
 

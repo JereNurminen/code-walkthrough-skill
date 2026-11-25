@@ -100,6 +100,14 @@ table.diff { border-collapse: collapse; width: 100%; font: 13px/1.5 var(--mono);
 .diff tr.gap td { color: var(--dim); background: var(--ctxn); text-align: center; line-height: 1.2; }
 .diff tr.lit .t, .diff tr.lit .s { background: var(--lit); }
 .diff tr.lit .n { background: var(--litn); box-shadow: inset 3px 0 0 var(--accent); }
+/* GitHub: commentable line numbers open the PR diff at that line; shift-click picks a range. */
+.diff .n a { color: inherit; text-decoration: none; display: block; margin: 0 -.6rem; padding: 0 .6rem; }
+.diff tr:hover .n a, .diff .n a:focus-visible { color: var(--surface); background: var(--accent); }
+.diff tr:hover .n a::before { content: "+ "; }
+.diff .n a.anchor { color: var(--surface); background: var(--accent); }
+.note .gh { grid-column: 2; justify-self: start; font-size: .78rem; color: var(--accent); text-decoration: none; border-bottom: 1px solid var(--line); }
+.note .gh:hover { border-bottom-color: var(--accent); }
+.note .gh.off { color: var(--muted); border-bottom: 0; cursor: help; }
 @media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } .diff td { transition: background-color .15s; } }
 
 .hljs-keyword, .hljs-literal, .hljs-tag, .hljs-name, .hljs-meta, .hljs-selector-tag { color: var(--hl-kw); }
@@ -154,6 +162,30 @@ body:has(.timeline) { --stick: 5.25rem; }
 .fhead .xlinks a:hover { border-color: var(--accent); }
 .file.flash { animation: flash 1.2s ease-out; }
 @keyframes flash { from { box-shadow: 0 0 0 3px var(--accent); } to { box-shadow: 0 0 0 3px transparent; } }
+
+.testing { display: grid; gap: 1rem; margin-bottom: 2.25rem; scroll-margin-top: var(--stick); }
+.testing header { display: grid; gap: .5rem; }
+.testing h2 { margin: 0; font: 600 1.35rem/1.3 var(--serif); }
+.testing header p { margin: 0; max-width: 75ch; }
+.tfiles { list-style: none; margin: 0; padding: 0; display: grid; gap: .75rem; }
+.tfile { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.tfile > p { margin: .65rem .9rem 0; max-width: 75ch; }
+.tfile > ul { margin: .4rem 0 0; padding: 0 .9rem 0 2.1rem; color: var(--muted); font-size: .92rem; }
+.tfile > :last-child { margin-bottom: .75rem; }
+.tfile .fhead { border-bottom: 1px solid var(--line); }
+.badge { font: 600 .68rem/1 var(--sans); letter-spacing: .06em; text-transform: uppercase; padding: .25rem .45rem; border-radius: 4px; border: 1px solid var(--line); color: var(--muted); }
+.badge.added { color: var(--fg); background: var(--addn); border-color: transparent; }
+.badge.removed { color: var(--fg); background: var(--deln); border-color: transparent; }
+.badge.changed, .badge.renamed { color: var(--accent); border-color: var(--accent); }
+.tstat { margin-left: auto; display: flex; gap: .5rem; font: .78rem var(--mono); }
+.tstat .plus { color: var(--addsign); }
+.tstat .minus { color: var(--delsign); }
+.tlist { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: .8rem 1.1rem; }
+.tlist h3 { margin: 0 0 .3rem; font-size: .74rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.tlist ul { margin: 0; padding-left: 1.2rem; }
+.tlist.commands ul { list-style: none; padding: 0; display: grid; gap: .3rem; }
+.tlist.commands code { display: block; overflow-x: auto; white-space: pre; padding: .35rem .55rem; background: var(--sunk); border-radius: 5px; }
+.tlist.gaps { border-style: dashed; }
 
 .out { background: var(--surface); border: 1px dashed var(--line); border-radius: 8px; padding: 1rem 1.25rem; color: var(--muted); font-size: .92rem; }
 .out ul { margin: .3rem 0 0; padding-left: 1.2rem; }
@@ -211,6 +243,8 @@ body:has(.timeline) { --stick: 5.25rem; }
       range.append(a)
     } else range.append(el('span', '', `L${from}–${to}`))
     const rows = {}
+    const gh = hunk.dataset.gh
+    const commentable = ranges(hunk.dataset.commentable)
     const tbody = el('tbody')
     // Removed lines, keyed by the new line they sat before; drawn as their own
     // rows, with old line numbers, and never targeted by notes.
@@ -252,11 +286,34 @@ body:has(.timeline) { --stick: 5.25rem; }
       addRemoved(n)
       const tr = el('tr', added.has(n) ? 'add' : '')
       const t = el('td', 't'); t.innerHTML = line || ' '
-      tr.append(el('td', 'n', String(n)), el('td', 's', added.has(n) ? '+' : ' '), t)
+      const num = el('td', 'n')
+      if (gh && commentable.has(n)) {
+        const a = el('a', '', String(n))
+        a.href = `${gh}R${n}`; a.target = '_blank'; a.rel = 'noreferrer'; a.dataset.line = n
+        a.title = `Comment on line ${n} in the PR (shift-click two lines for a range)`
+        num.append(a)
+      } else {
+        num.textContent = String(n)
+        if (gh) num.title = 'Not in the PR diff: GitHub takes comments only on changed lines and the 3 lines around them'
+      }
+      tr.append(num, el('td', 's', added.has(n) ? '+' : ' '), t)
       tbody.append(tr)
       rows[n] = tr
     })
     addRemoved(to + 1)
+    // Shift-click two line numbers to comment on the range between them
+    let anchor = null
+    tbody.addEventListener('click', e => {
+      const a = e.target.closest('.n a')
+      if (!a) return
+      tbody.querySelectorAll('.n a.anchor').forEach(x => x.classList.remove('anchor'))
+      if (!e.shiftKey) { anchor = null; return }
+      e.preventDefault()
+      const n = Number(a.dataset.line)
+      if (anchor === null || anchor === n) { anchor = n; a.classList.add('anchor'); return }
+      open(`${gh}R${Math.min(anchor, n)}-R${Math.max(anchor, n)}`, '_blank', 'noreferrer')
+      anchor = null
+    })
     const table = el('table', 'diff'); table.append(tbody)
     const scroll = el('div', 'scroll'); scroll.append(table)
     hunk.replaceChildren(scroll)
@@ -275,6 +332,22 @@ body:has(.timeline) { --stick: 5.25rem; }
       const at = el('div', 'at', a === b ? `L${a}` : `L${a}–${b}`)
       if (manyFiles) at.append(el('small', '', hunk.closest('.file').querySelector('.path').textContent.split('/').pop()))
       note.prepend(at)
+      if (hunk.dataset.gh) {
+        // The note's lines that GitHub can take a comment on
+        const ok = [...ranges(hunk.dataset.commentable)].filter(n => n >= a && n <= b)
+        if (ok.length) {
+          const lo = Math.min(...ok), hi = Math.max(...ok)
+          const link = el('a', 'gh', 'Comment on GitHub ↗')
+          link.href = `${hunk.dataset.gh}R${lo}-R${hi}`; link.target = '_blank'; link.rel = 'noreferrer'
+          link.title = lo === hi ? `Line ${lo} in the PR diff` : `Lines ${lo}–${hi} in the PR diff`
+          link.addEventListener('click', e => e.stopPropagation())
+          note.append(link)
+        } else {
+          const off = el('span', 'gh off', 'Not in the PR diff')
+          off.title = 'GitHub takes comments only on changed lines and the 3 lines around them'
+          note.append(off)
+        }
+      }
       note.tabIndex = 0
       const light = on => { note.classList.toggle('on', on); rows.forEach(tr => tr.classList.toggle('lit', on)) }
       note.addEventListener('mouseenter', () => light(true))
@@ -321,7 +394,8 @@ body:has(.timeline) { --stick: 5.25rem; }
     const fromHash = scroll => {
       const id = decodeURIComponent(location.hash.slice(1))
       const m = id.match(/^c(\d+)/)
-      const i = m ? Math.min(Number(m[1]), chapters.length - 1) : 0
+      // A link outside the chapters (such as #testing) keeps the current chapter
+      const i = m ? Math.min(Number(m[1]), chapters.length - 1) : Math.max(current, 0)
       show(i)
       if (!m || !scroll) return
       const target = document.getElementById(id) || chapters[i]
